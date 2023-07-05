@@ -16,10 +16,12 @@ jobs:
     - name: Decode Keystore
       env:
         ENCODED_STRING: ${{ secrets.KEYSTORE }}
+        SIGNING_KEY_STORE_PATH: ${{ secrets.SIGNING_KEY_STORE_PATH }}
+ 
       run: |
-        TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
-        mkdir "${TMP_KEYSTORE_FILE_PATH}"
-        echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/your_kestore.jks
+        echo $ENCODED_STRING > keystore-b64.txt
+        base64 -d keystore-b64.txt > $SIGNING_KEY_STORE_PATH
+
     
     - uses: actions/checkout@v3
     - name: set up JDK 17
@@ -45,18 +47,20 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
-    - name: Build prodRelease
-      run: ./gradlew app:bundleProdRelease
+    - name: Build Release bundle
       env:
+        SIGNING_KEY_STORE_PATH: ${{ secrets.SIGNING_KEY_STORE_PATH }}
         SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      run: ./gradlew bundleRelease
 
-    - name: Upload app bundle as artifact
-      uses: actions/upload-artifact@v2
+    - name: Upload Release Build to Artifacts
+      uses: actions/upload-artifact@v3
       with:
-        name: app-bundle
-        path: app/build/outputs/bundle/prodRelease/app-prod-release.aab
+        name: release-artifacts
+        paths: |
+          app/build/outputs/bundle/release/
         
         
   deploy:
